@@ -17,7 +17,7 @@ export const route: Route = {
         language: 'language, see below. defaults to www',
         username: 'username, part of the url e.g. `pornhub.com/model/stacy-starando`',
         sort: 'sorting method, see below. Defaults to mr (most recent)',
-        img: 'show images, set to `img=1` to enable',
+        img: 'images are enabled by default; set to `img=0` to disable',
     },
     features: {
         requireConfig: false,
@@ -43,10 +43,11 @@ async function handler(ctx): Promise<Data> {
 
     const { data: response } = await got(link, { headers });
     const $ = load(response);
-    const showImages = img === 'img=1';
+    const showImages = img !== 'img=0';
+    const thumbnailProxyBase = `${new URL(ctx.req.url).origin}/pornhub/thumbnail`;
     const items = $('#mostRecentVideosSection .videoBox')
         .toArray()
-        .map((e) => parseItems($(e), showImages));
+        .map((e) => parseItems($(e), showImages, thumbnailProxyBase));
 
     return {
         title: $('h1').first().text(),
