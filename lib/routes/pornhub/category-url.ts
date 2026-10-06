@@ -11,7 +11,7 @@ export const route: Route = {
     path: '/category_url/:url?/:language?/:img?',
     categories: ['multimedia'],
     example: '/pornhub/category_url/video%3Fc%3D15%26o%3Dmv%26t%3Dw%26cc%3Djp',
-    parameters: { language: 'language, see below. defaults to `www` (English)', url: 'relative path after `pornhub.com/`, need to be URL encoded', img: 'show images, set to `img=1` to enable' },
+    parameters: { language: 'language, see below. defaults to `www` (English)', url: 'relative path after `pornhub.com/`, need to be URL encoded', img: 'images are enabled by default; set to `img=0` to disable' },
     features: {
         requireConfig: false,
         requirePuppeteer: false,
@@ -42,10 +42,11 @@ async function handler(ctx) {
 
     const { data: response } = await got(link, { headers });
     const $ = load(response);
-    const showImages = img === 'img=1';
+    const showImages = img !== 'img=0';
+    const thumbnailProxyBase = `${new URL(ctx.req.url).origin}/pornhub/thumbnail`;
     const items = $('#videoCategory .videoBox')
         .toArray()
-        .map((e) => parseItems($(e), showImages));
+        .map((e) => parseItems($(e), showImages, thumbnailProxyBase));
 
     return {
         title: $('title').text(),
