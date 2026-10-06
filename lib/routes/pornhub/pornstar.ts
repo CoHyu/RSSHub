@@ -56,7 +56,7 @@ export const route: Route = {
                 },
             ],
         },
-        img: 'show images, set to `img=1` to enable',
+        img: 'images are enabled by default; set to `img=0` to disable',
     },
     features: {
         requireConfig: false,
@@ -84,7 +84,8 @@ async function handler(ctx): Promise<Data> {
     let $ = load(response);
     let items;
 
-    const showImages = img === 'img=1';
+    const showImages = img !== 'img=0';
+    const thumbnailProxyBase = `${new URL(ctx.req.url).origin}/pornhub/thumbnail`;
 
     if ($('.withBio').length === 0) {
         link = `https://${language}.pornhub.com/pornstar/${username}/videos?o=${sort}`;
@@ -92,11 +93,11 @@ async function handler(ctx): Promise<Data> {
         $ = load(response);
         items = $('#mostRecentVideosSection .videoBox')
             .toArray()
-            .map((e) => parseItems($(e), showImages));
+            .map((e) => parseItems($(e), showImages, thumbnailProxyBase));
     } else {
         items = $('#pornstarsVideoSection .videoBox')
             .toArray()
-            .map((e) => parseItems($(e), showImages));
+            .map((e) => parseItems($(e), showImages, thumbnailProxyBase));
     }
 
     return {
