@@ -180,6 +180,8 @@ type ConfigEnvKeys =
     | 'NHENTAI_PASSWORD'
     | 'NOTION_TOKEN'
     | 'ONLYFANS_COOKIE'
+    | 'OSU_CLIENT_ID'
+    | 'OSU_CLIENT_SECRET'
     | 'PATREON_SESSION_ID'
     | 'PIANYUAN_COOKIE'
     | 'PIXABAY_KEY'
