@@ -57,7 +57,16 @@ export const route: Route = {
     categories: ['game'],
     example: '/osu/latest-ranked/includeMode=osu&difficultyLimit=L3&difficultyLimit=U7',
     features: {
-        requireConfig: true,
+        requireConfig: [
+            {
+                name: 'OSU_CLIENT_ID',
+                description: 'osu! OAuth application client ID',
+            },
+            {
+                name: 'OSU_CLIENT_SECRET',
+                description: 'osu! OAuth application client secret',
+            },
+        ],
         requirePuppeteer: false,
         antiCrawler: false,
         supportBT: false,
