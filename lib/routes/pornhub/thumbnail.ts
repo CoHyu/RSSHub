@@ -27,6 +27,25 @@ const validateSource = (source: string) => {
     return url.href;
 };
 
+const detectContentType = (data: Buffer) => {
+    if (data.length >= 8 && data.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+        return 'image/png';
+    }
+    if (data.length >= 3 && data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff) {
+        return 'image/jpeg';
+    }
+    if (data.length >= 6 && (data.subarray(0, 6).toString() === 'GIF87a' || data.subarray(0, 6).toString() === 'GIF89a')) {
+        return 'image/gif';
+    }
+    if (data.length >= 12 && data.subarray(0, 4).toString() === 'RIFF' && data.subarray(8, 12).toString() === 'WEBP') {
+        return 'image/webp';
+    }
+    if (data.length >= 12 && data.subarray(4, 12).toString().includes('ftypavif')) {
+        return 'image/avif';
+    }
+    throw new Error('Pornhub thumbnail response is not a supported image');
+};
+
 const fetchThumbnail = async (source: string) => {
     const response = await got(source, {
         headers: {
@@ -36,17 +55,13 @@ const fetchThumbnail = async (source: string) => {
         responseType: 'buffer',
     });
 
-    const contentType = String(response.headers['content-type'] || 'image/jpeg').split(';')[0].trim();
-    if (!contentType.startsWith('image/')) {
-        throw new Error(`Unexpected thumbnail content type: ${contentType}`);
-    }
     if (response.data.length > maxImageBytes) {
         throw new Error('Pornhub thumbnail is too large');
     }
 
     return {
         data: response.data,
-        contentType,
+        contentType: detectContentType(response.data),
     };
 };
 
