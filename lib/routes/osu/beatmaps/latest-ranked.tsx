@@ -1,4 +1,3 @@
-import { load } from 'cheerio';
 import { renderToString } from 'hono/jsx/dom/server';
 
 import { config } from '@/config';
@@ -16,7 +15,9 @@ const actualParametersDescTable = `
 `;
 
 const descriptionDoc = `
-Subscribe to the new beatmaps on https://osu.ppy.sh/beatmapsets.
+Subscribe to the new beatmaps on https://osu.ppy.sh/beatmapsets using the official osu! API v2.
+
+Requires `OSU_CLIENT_ID` and `OSU_CLIENT_SECRET` from an osu! OAuth application.
 
 #### Parameter Description
 
@@ -56,7 +57,7 @@ export const route: Route = {
     categories: ['game'],
     example: '/osu/latest-ranked/includeMode=osu&difficultyLimit=L3&difficultyLimit=U7',
     features: {
-        requireConfig: false,
+        requireConfig: true,
         requirePuppeteer: false,
         antiCrawler: false,
         supportBT: false,
@@ -176,6 +177,57 @@ interface BeatmapsetInfo {
     pack_tags: string[];
 }
 
+interface OsuTokenResponse {
+    access_token: string;
+    expires_in: number;
+    token_type: string;
+}
+
+interface BeatmapsetSearchResponse {
+    beatmapsets: BeatmapsetInfo[];
+}
+
+const modeLiteralToApiMode: Record<string, string> = {
+    osu: '0',
+    taiko: '1',
+    fruits: '2',
+    mania: '3',
+};
+
+async function getOsuApiToken(): Promise<string> {
+    const { clientId, clientSecret } = config.osu;
+
+    if (!clientId || !clientSecret) {
+        throw new Error('OSU_CLIENT_ID and OSU_CLIENT_SECRET must be configured');
+    }
+
+    return cache.tryGet<string>(
+        'osu:oauth:client-credentials',
+        async () => {
+            const response = await got.post('https://osu.ppy.sh/oauth/token', {
+                form: {
+                    client_id: clientId,
+                    client_secret: clientSecret,
+                    grant_type: 'client_credentials',
+                    scope: 'public',
+                },
+                headers: {
+                    accept: 'application/json',
+                },
+            });
+            const tokenResponse = response.data as OsuTokenResponse;
+
+            if (!tokenResponse?.access_token) {
+                throw new Error('Failed to obtain osu! API access token');
+            }
+
+            return tokenResponse.access_token;
+        },
+        23 * 60 * 60,
+        false
+    );
+}
+
 async function handler(ctx): Promise<Data> {
     // Parse & retrive searchParams
     const pathParams = ctx.req.param('routeParams');
@@ -188,25 +240,38 @@ async function handler(ctx): Promise<Data> {
     const difficultyLimits = searchParams.getAll('difficultyLimit');
     const modeInTitle = searchParams.get('modeInTitle') ?? 'true'; // show mode name in title, default to true.
 
-    // fetch beatmap JSON info from website within cache
+    // Fetch beatmap data through the official osu! API v2 instead of scraping the website.
+    const apiMode = includeModes.length === 1 ? modeLiteralToApiMode[includeModes[0]] : undefined;
+    const beatmapsetListCacheKey = `osu:api:v2:beatmapsets:latest-ranked:${apiMode ?? 'all'}`;
+
     let beatmapsetList = await cache.tryGet<BeatmapsetInfo[]>(
-        'https://osu.ppy.sh/beatmapsets:JSON',
+        beatmapsetListCacheKey,
         async () => {
-            const link = 'https://osu.ppy.sh/beatmapsets';
+            const accessToken = await getOsuApiToken();
+            const apiSearchParams: Record<string, string> = {
+                q: '',
+                s: 'ranked',
+                sort: 'ranked_desc',
+            };
 
-            const response = await got.get(link);
-            const $ = load(response.data);
-
-            const beatmapInfo = JSON.parse($('#json-beatmaps').text() ?? '{"beatmapsets": undefined}');
-
-            const beatmapList: BeatmapsetInfo[] = beatmapInfo.beatmapsets;
-
-            // Failed to fetch, raise error
-            if (beatmapList === undefined) {
-                throw new Error('Failed to retrieve JSON beatmap info from osu! website');
+            if (apiMode !== undefined) {
+                apiSearchParams.m = apiMode;
             }
 
-            return beatmapList;
+            const response = await got.get('https://osu.ppy.sh/api/v2/beatmapsets/search', {
+                searchParams: apiSearchParams,
+                headers: {
+                    accept: 'application/json',
+                    authorization: `Bearer ${accessToken}`,
+                },
+            });
+            const searchResponse = response.data as BeatmapsetSearchResponse;
+
+            if (!Array.isArray(searchResponse?.beatmapsets)) {
+                throw new Error('Failed to retrieve beatmap info from osu! API v2');
+            }
+
+            return searchResponse.beatmapsets;
         },
         config.cache.routeExpire,
         false
@@ -229,7 +294,7 @@ async function handler(ctx): Promise<Data> {
 
     let upperLimit = 99; // Osu! will never have maps with 99+ star rating right?
     let lowerLimit = 0;
-    if (difficultyLimits && difficultyLimits.length > 0 && difficultyLimits.length < 2) {
+    if (difficultyLimits.length > 0) {
         for (const dfLimit of difficultyLimits) {
             if (dfLimit.startsWith('U')) {
                 upperLimit = Number(dfLimit.slice(1));
