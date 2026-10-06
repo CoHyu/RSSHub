@@ -37,12 +37,14 @@ async function handler(ctx): Promise<Data> {
     const { data: response } = await got(link, { headers });
     const $ = load(response);
     const showImages = img === 'img=1';
-    const items = $('.videoUList .videoBox')
+    const videoSelectors = ['#modelMostRecentVideosSection .videoBox', '#mostRecentVideosSection .videoBox', '#videosUploadedSection .videoBox', '.videoUList .videoBox'];
+    const videoSelector = videoSelectors.find((selector) => $(selector).length > 0) ?? '.videoUList .videoBox';
+    const items = $(videoSelector)
         .toArray()
         .map((e) => parseItems($(e), showImages));
 
     return {
-        title: $('.profileUserName a').text(),
+        title: $('.profileUserName a').text().trim() || $('h1').first().text().trim() || $('title').text().split('|')[0].trim(),
         description: $('.aboutMeText').text().trim(),
         link,
         image: $('#getAvatar').attr('src'),
