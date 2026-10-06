@@ -17,7 +17,7 @@ const actualParametersDescTable = `
 const descriptionDoc = `
 Subscribe to the new beatmaps on https://osu.ppy.sh/beatmapsets using the official osu! API v2.
 
-Requires `OSU_CLIENT_ID` and `OSU_CLIENT_SECRET` from an osu! OAuth application.
+Requires \`OSU_CLIENT_ID\` and \`OSU_CLIENT_SECRET\` from an osu! OAuth application.
 
 #### Parameter Description
 
