@@ -222,6 +222,7 @@ async function getOsuApiToken(): Promise<string> {
                 },
                 headers: {
                     accept: 'application/json',
+                    'user-agent': 'RSSHub-osu-api/1.0',
                 },
             });
             const tokenResponse = response.data as OsuTokenResponse;
@@ -272,6 +273,7 @@ async function handler(ctx): Promise<Data> {
                 headers: {
                     accept: 'application/json',
                     authorization: `Bearer ${accessToken}`,
+                    'user-agent': 'RSSHub-osu-api/1.0',
                 },
             });
             const searchResponse = response.data as BeatmapsetSearchResponse;
