@@ -11,7 +11,7 @@ export const route: Route = {
     path: '/users/:username/:language?/:img?',
     categories: ['multimedia'],
     example: '/pornhub/users/pornhubmodels',
-    parameters: { language: 'language, see below. defaults to `www` (English)', username: 'username, part of the url e.g. `pornhub.com/users/pornhubmodels`', img: 'show images, set to `img=1` to enable' },
+    parameters: { language: 'language, see below. defaults to `www` (English)', username: 'username, part of the url e.g. `pornhub.com/users/pornhubmodels`', img: 'images are enabled by default; set to `img=0` to disable' },
     features: {
         requireConfig: false,
         requirePuppeteer: false,
@@ -36,12 +36,13 @@ async function handler(ctx): Promise<Data> {
 
     const { data: response } = await got(link, { headers });
     const $ = load(response);
-    const showImages = img === 'img=1';
+    const showImages = img !== 'img=0';
+    const thumbnailProxyBase = `${new URL(ctx.req.url).origin}/pornhub/thumbnail`;
     const videoSelectors = ['#modelMostRecentVideosSection .videoBox', '#mostRecentVideosSection .videoBox', '#videosUploadedSection .videoBox', '.videoUList .videoBox'];
     const videoSelector = videoSelectors.find((selector) => $(selector).length > 0) ?? '.videoUList .videoBox';
     const items = $(videoSelector)
         .toArray()
-        .map((e) => parseItems($(e), showImages));
+        .map((e) => parseItems($(e), showImages, thumbnailProxyBase));
 
     return {
         title: $('.profileUserName a').text().trim() || $('h1').first().text().trim() || $('title').text().split('|')[0].trim(),
