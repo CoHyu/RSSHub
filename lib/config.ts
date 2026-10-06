@@ -589,6 +589,10 @@ export type Config = {
     onlyfans: {
         cookie?: string;
     };
+    osu: {
+        clientId?: string;
+        clientSecret?: string;
+    };
     patreon: {
         sessionId?: string;
     };
@@ -1126,6 +1130,10 @@ const calculateValue = () => {
         },
         onlyfans: {
             cookie: envs.ONLYFANS_COOKIE,
+        },
+        osu: {
+            clientId: envs.OSU_CLIENT_ID,
+            clientSecret: envs.OSU_CLIENT_SECRET,
         },
         patreon: {
             sessionId: envs.PATREON_SESSION_ID,
